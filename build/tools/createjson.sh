@@ -95,7 +95,7 @@ if [ -f $existingOTAjson ]; then
 			"oem": "'$oem'",
 			"device": "'$device'",
 			"filename": "'$filename'",
-			"download": "https://sourceforge.net/projects/crdroid/files/'$1'/'$v_max'.x/'$3'/download",
+			"download": "http://html6405.ddns.net/'$device'/html6405/crDroid/'$3'",
 			"timestamp": '$timestamp',
 			"md5": "'$md5'",
 			"sha256": "'$sha256'",
