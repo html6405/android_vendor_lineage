@@ -96,7 +96,7 @@ if [ -f $existingOTAjson ]; then
       "id": "'$md5'",
       "romtype": "HTML6405",
       "size": '$size',
-      "url": "http://html6405.ddns.net/'$device'/html6405/LOS20/'$3'",
+      "url": "http://ota.html6405.com/'$device'/LOS20/'$3'",
       "version": "20.0"
     }
   ]
