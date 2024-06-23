@@ -35,6 +35,7 @@ SOONG_CONFIG_lineageGlobalVars += \
     gralloc_handle_has_custom_content_md_reserved_size \
     disable_postrender_cleanup \
     gralloc_handle_has_reserved_size \
+    gralloc_handle_has_ubwcp_format \
     has_legacy_camera_hal1 \
     has_memfd_backport \
     needs_camera_boottime \
