@@ -16,6 +16,11 @@
 #
 
 #$1=TARGET_DEVICE, $2=PRODUCT_OUT, $3=FILE_NAME
+if [ "$#" -ne 3 ] || [ ! -f "$2/$3" ]; then
+    echo "Expected device, output directory and an existing OTA ZIP filename" >&2
+    exit 1
+fi
+
 existingOTAjson=./vendor/LineageOTA/$1.json
 output=$2/$1.json
 
@@ -39,9 +44,11 @@ if [ -f $existingOTAjson ]; then
 	buildprop=$2/system/build.prop
 	linenr=`grep -n "ro.system.build.date.utc" $buildprop | cut -d':' -f1`
 	timestamp=`sed -n $linenr'p' < $buildprop | cut -d'=' -f2`
-	md5=`md5sum "$2/$3" | cut -d' ' -f1`
-	sha256=`sha256sum "$2/$3" | cut -d' ' -f1`
-	size=`stat -c "%s" "$2/$3"`
+	md5=$(md5sum "$2/$3") || exit 1
+	md5=${md5%% *}
+	sha256=$(sha256sum "$2/$3") || exit 1
+	sha256=${sha256%% *}
+	size=$(stat -c "%s" "$2/$3") || exit 1
 	buildtype=`grep -n "\"buildtype\"" $existingOTAjson | cut -d ":" -f 3 | sed 's/"//g' | sed 's/,//g' | xargs`
 	forum=`grep -n "\"forum\"" $existingOTAjson | cut -d ":" -f 4 | sed 's/"//g' | sed 's/,//g' | xargs`
 	if [ ! -z "$forum" ]; then
