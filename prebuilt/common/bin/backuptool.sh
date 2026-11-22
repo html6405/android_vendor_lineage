@@ -43,23 +43,63 @@ restore_addon_d() {
 
 # Proceed only if /product or /system is the expected major and minor version
 check_prereq() {
+  RECOVERY_PRODUCT=/product
 
-P=/product
-if [ -L $P ]; then
-   # If symlink, assume no product partition exists, so access via $S(ystem)
-   P=$S/product
-fi
+  # A readable path is insufficient: a failed system mount must not make us
+  # accept stale /product metadata or copy files to the recovery ramdisk.
+  mounted_path_matches() {
+    actual=$(awk -v path="$1" '
+      $2 == "/" || $2 == path || index(path, $2 "/") == 1 {
+        if (length($2) > longest) {
+          longest = length($2); source = $1; target = $2; count = 1
+        } else if (length($2) == longest) {
+          count++
+        }
+      }
+      END { if (longest && count == 1) print source "|" target }
+    ' /proc/mounts)
+    [ -n "$actual" ] || return 1
+    actual_source=${actual%%|*}
+    actual_target=${actual#*|}
+    [ "$actual_target" = "$3" ] || return 1
+    [ "$(readlink -nf "$actual_source")" = "$(readlink -nf "$2")" ]
+  }
 
-# If there is no build.prop file the partition is probably empty.
-if [ ! -r $$P/etc/build.prop ] && [ ! -r $S/build.prop ]; then
-  echo "Backup/restore is not possible. Partition is probably empty"
+  [ -n "$SYSDEV" ] && [ -n "$SYSMOUNT" ] || return 3
+  system_root=$(readlink -f "$SYSMOUNT") || return 3
+  if ! mounted_path_matches "$system_root" "$SYSDEV" "$SYSMOUNT"; then
+    echo "Backup/restore is not possible. Intended system device is not mounted"
+    return 3
+  fi
+  product_dev=$(find_block product)
+
+  # Legacy SAR embeds product below system; recovery /product may be empty.
+  for prop in "$S/product/etc/build.prop" \
+              "$SYSMOUNT/product/etc/build.prop" \
+              "$RECOVERY_PRODUCT/etc/build.prop" \
+              "$S/build.prop"; do
+    [ -f "$prop" ] && [ -r "$prop" ] || continue
+    resolved=$(readlink -f "$prop") || continue
+    if mounted_path_matches "$resolved" "$SYSDEV" "$SYSMOUNT"; then
+      :
+    elif [ -n "$product_dev" ] && \
+         mounted_path_matches "$resolved" "$product_dev" "$RECOVERY_PRODUCT"; then
+      :
+    else
+      continue
+    fi
+    version=$(sed -n 's/^ro\.lineage\.version=//p' "$prop" | head -n 1)
+    [ -n "$version" ] || continue
+    case "$version" in
+      "$V"|"$V".*|"$V"-*) return 0 ;;
+      *)
+        echo "Backup/restore is not possible. Incompatible ROM version: $V (found $version)"
+        return 2
+        ;;
+    esac
+  done
+  echo "Backup/restore is not possible. No readable mounted LineageOS version property"
   return 1
-fi
-if ! grep -q "^ro.lineage.version=$V.*" $P/etc/build.prop $S/build.prop; then
-  echo "Backup/restore is not possible. Incompatible ROM version: $V"
-  return 2
-fi
-return 0
 }
 
 # Execute /system/addon.d/*.sh scripts with each $@ parameter
